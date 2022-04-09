@@ -393,6 +393,8 @@ configmapReload:
       tag: v0.5.0
       pullPolicy: IfNotPresent
 
+    # containerPort: 9533
+
     ## Additional configmap-reload container arguments
     ##
     extraArgs: {}
@@ -430,6 +432,8 @@ configmapReload:
       repository: jimmidyson/configmap-reload
       tag: v0.5.0
       pullPolicy: IfNotPresent
+
+    # containerPort: 9533
 
     ## Additional configmap-reload container arguments
     ##
@@ -664,7 +668,7 @@ server:
   ##
   image:
     repository: quay.io/prometheus/prometheus
-    tag: v2.31.1
+    tag: v2.34.0
     pullPolicy: IfNotPresent
 
   ## prometheus server priorityClassName
@@ -1077,6 +1081,10 @@ server:
     fsGroup: 65534
 
   service:
+    ## If false, no Service will be created for the Prometheus server
+    ##
+    enabled: true
+
     annotations: {}
     labels: {}
     clusterIP: ""
@@ -1551,6 +1559,7 @@ serverFiles:
       # * `prometheus.io/param_<parameter>`: If the metrics endpoint uses parameters
       # then you can set any parameter
       - job_name: 'kubernetes-service-endpoints'
+        honor_labels: true
 
         kubernetes_sd_configs:
           - role: endpoints
@@ -1605,6 +1614,7 @@ serverFiles:
       # * `prometheus.io/param_<parameter>`: If the metrics endpoint uses parameters
       # then you can set any parameter
       - job_name: 'kubernetes-service-endpoints-slow'
+        honor_labels: true
 
         scrape_interval: 5m
         scrape_timeout: 30s
@@ -1662,6 +1672,7 @@ serverFiles:
       #
       # * `prometheus.io/probe`: Only probe services that have a value of `true`
       - job_name: 'kubernetes-services'
+        honor_labels: true
 
         metrics_path: /probe
         params:
@@ -1699,6 +1710,7 @@ serverFiles:
       # * `prometheus.io/path`: If the metrics path is not `/metrics` override this.
       # * `prometheus.io/port`: Scrape the pod on the indicated port instead of the default of `9102`.
       - job_name: 'kubernetes-pods'
+        honor_labels: true
 
         kubernetes_sd_configs:
           - role: pod
@@ -1750,6 +1762,7 @@ serverFiles:
       # * `prometheus.io/path`: If the metrics path is not `/metrics` override this.
       # * `prometheus.io/port`: Scrape the pod on the indicated port instead of the default of `9102`.
       - job_name: 'kubernetes-pods-slow'
+        honor_labels: true
 
         scrape_interval: 5m
         scrape_timeout: 30s

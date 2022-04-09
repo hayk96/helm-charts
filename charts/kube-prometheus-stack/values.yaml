@@ -101,6 +101,10 @@ additionalPrometheusRulesMap: {}
 global:
   rbac:
     create: true
+
+    ## Create ClusterRoles that extend the existing view, edit and admin ClusterRoles to interact with prometheus-operator CRDs
+    ## Ref: https://kubernetes.io/docs/reference/access-authn-authz/rbac/#aggregated-clusterroles
+    createAggregateClusterRoles: false
     pspEnabled: false
     pspAnnotations: {}
       ## Specify pod annotations
@@ -414,7 +418,7 @@ alertmanager:
     ##
     image:
       repository: quay.io/prometheus/alertmanager
-      tag: v0.23.0
+      tag: v0.24.0
       sha: ""
 
     ## If true then the user will be responsible to provide a secret with alertmanager configuration
@@ -675,6 +679,11 @@ grafana:
     ##
     enabled: false
 
+    ## IngressClassName for Grafana Ingress.
+    ## Should be provided if Ingress is enable.
+    ##
+    # ingressClassName: nginx
+
     ## Annotations for Grafana Ingress
     ##
     annotations: {}
@@ -722,6 +731,8 @@ grafana:
     datasources:
       enabled: true
       defaultDatasourceEnabled: true
+
+      uid: prometheus
 
       ## URL of prometheus datasource
       ##
@@ -1721,17 +1732,17 @@ prometheusOperator:
     # resource config for prometheusConfigReloader
     resources:
       requests:
-        cpu: 100m
+        cpu: 200m
         memory: 50Mi
       limits:
-        cpu: 100m
+        cpu: 200m
         memory: 50Mi
 
   ## Thanos side-car image when configured
   ##
   thanosImage:
     repository: quay.io/thanos/thanos
-    tag: v0.25.1
+    tag: v0.25.2
     sha: ""
 
   ## Set a Field Selector to filter watched secrets
@@ -2149,7 +2160,7 @@ prometheus:
     ##
     image:
       repository: quay.io/prometheus/prometheus
-      tag: v2.33.5
+      tag: v2.34.0
       sha: ""
 
     ## Tolerations for use with node taints
@@ -2459,6 +2470,7 @@ prometheus:
     ## appended, the user is responsible to make sure it is valid. Note that using this feature may expose the possibility
     ## to break upgrades of Prometheus. It is advised to review Prometheus release notes to ensure that no incompatible
     ## scrape configs are going to break Prometheus after the upgrade.
+    ## AdditionalScrapeConfigs can be defined as a list or as a templated string.
     ##
     ## The scrape configuration example below will find master nodes, provided they have the name .*mst.*, relabel the
     ## port to 2379 and allow etcd scraping provided it is running on all Kubernetes master nodes
@@ -2491,6 +2503,20 @@ prometheus:
     #   metric_relabel_configs:
     #   - regex: (kubernetes_io_hostname|failure_domain_beta_kubernetes_io_region|beta_kubernetes_io_os|beta_kubernetes_io_arch|beta_kubernetes_io_instance_type|failure_domain_beta_kubernetes_io_zone)
     #     action: labeldrop
+    #
+    ## If scrape config contains a repetitive section, you may want to use a template.
+    ## In the following example, you can see how to define `gce_sd_configs` for multiple zones
+    # additionalScrapeConfigs: |
+    #  - job_name: "node-exporter"
+    #    gce_sd_configs:
+    #    {{range $zone := .Values.gcp_zones}}
+    #    - project: "project1"
+    #      zone: "{{$zone}}"
+    #      port: 9100
+    #    {{end}}
+    #    relabel_configs:
+    #    ...
+
 
     ## If additional scrape configurations are already deployed in a single secret file you can use this section.
     ## Expected values are the secret name and key
