@@ -8,6 +8,13 @@ metadata:
     chart: {{ template "prometheus-cloudwatch-exporter.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
+    {{- with .Values.deployment.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.deployment.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -39,9 +46,16 @@ spec:
     {{- end }}
       containers:
         - name: {{ .Chart.Name }}
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+        {{- with .Values.extraEnv }}
+        {{- toYaml . | nindent 12 }}
+        {{- end }}
         {{- if not .Values.aws.role }}
         {{- if .Values.aws.secret.name }}
-          env:
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
@@ -60,7 +74,6 @@ spec:
                   name: {{ .Values.aws.secret.name }}
           {{- end }}
         {{- else if and .Values.aws.aws_secret_access_key .Values.aws.aws_access_key_id }}
-          env:
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
@@ -73,11 +86,10 @@ spec:
                   name: {{ template "prometheus-cloudwatch-exporter.fullname" . }}
         {{- end }}
         {{- else if .Values.aws.stsRegional.enabled }}
-          env:
             - name: AWS_STS_REGIONAL_ENDPOINTS
               value: regional
         {{- end }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default (printf "v%s" .Chart.AppVersion) }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           {{- if .Values.command }}
           command: {{ toYaml .Values.command | nindent 12 -}}

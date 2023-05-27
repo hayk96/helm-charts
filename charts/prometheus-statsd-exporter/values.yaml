@@ -9,12 +9,20 @@ image:
   repository: prom/statsd-exporter
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: v0.22.1
+  tag: ""
 
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
+# Additional container environment variables
+extraEnv: {}
+#   HTTP_PROXY: "http://superproxy.com:3128"
+#   NO_PROXY: "localhost,127.0.0.1"
+
+# Additional arguments in the statsd_exporter command line
+extraArgs: []
+  # - --history.limit=1000
 
 statsd:
   # The UDP port on which to receive statsd metric lines.
@@ -39,8 +47,34 @@ statsd:
   # Metric mapping ConfigMap
 #  mappingConfigMapName: ""
 
+  # Name of the key inside Metric mapping ConfigMap. Default is "statsd.mappingConf".
+#  mappingConfigMapKey: ""
+
   # Metric mapping configuration
 #  mappingConfig: |-
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+
+prometheus:
+  monitor:
+    enabled: false
+    additionalLabels: {}
+    namespace: ""
+    interval: 30s
+    # ApiVersion for the podMonitor Resource(defaults to "monitoring.googleapis.com/v1")
+    apiVersion: ""
+    ## resource kind(defaults to "PodMonitoring")
+    kind: ""
+    # metrics exposing endpoint
+    endpoint: "/metrics"
 
 serviceMonitor:
   enabled: false
@@ -49,6 +83,17 @@ serviceMonitor:
   namespace: monitoring
   honorLabels: false
   additionalLabels: {}
+  ## resource kind(defaults to "ServiceMonitor")
+  kind: ""
+  # MetricRelabelConfigs to apply to samples before ingestion
+  metricRelabelings: []
+  # RelabelConfigs to apply to samples before scraping.
+  # More info https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+  relabelings: []
+  # ApiVersion for the podMonitor Resource(defaults to "monitoring.coreos.com/v1")
+  apiVersion: ""
+  # metrics exposing endpoint
+  endpoint: "/metrics"
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -60,6 +105,9 @@ serviceAccount:
   name: ""
 
 podAnnotations: {}
+
+# Extra labels to be added to pods
+podLabels: {}
 
 podSecurityContext: {}
   # fsGroup: 2000

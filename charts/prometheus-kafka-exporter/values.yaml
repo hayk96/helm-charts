@@ -1,7 +1,24 @@
 image:
   repository: danielqsj/kafka-exporter
-  tag: v1.4.1
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
   pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+global:
+  # To help compatibility with other charts which use global.imagePullSecrets.
+  # Allow either an array of {name: pullSecret} maps (k8s-style), or an array of strings (more common helm-style).
+  # global:
+  #   imagePullSecrets:
+  #   - name: pullSecret1
+  #   - name: pullSecret2
+  # or
+  # global:
+  #   imagePullSecrets:
+  #   - pullSecret1
+  #   - pullSecret2
+  imagePullSecrets: []
 
 replicaCount: 1
 
@@ -102,6 +119,8 @@ affinity: {}
 tls:
   enabled: false
   insecureSkipVerify: false
+  # The kafka server's name. Used to verify the hostname on the returned certificates unless tls.insecureSkipVerify is set to true.
+  serverName: ""
   # mountPath: /secret/certs
   # secretName: <name of an existing secret>
 
@@ -127,13 +146,35 @@ sasl:
     # mountPath: /secret/kerberos
     # secretName: <name of an existing secret>
 
+# This enables TLS for web server
+server:
+  tls:
+    enabled: false
+    mutualAuthEnabled: false
+  # mountPath: /secret/certs
+  # secretName: <name of an existing secret>
+
 # If enabled Kafka dependency chart will be used.
 # This is only needed for the CI job so it should always be disabled.
 kafka:
   enabled: false
 
-# Set security context for the kafka-exporter container. Useful when you need to adapt to an existing PSP
+# Set security context for the kafka-exporter pod. Useful when you need to adapt to an existing PSP
 securityContext: {}
-  # runAsUser:
-  # runAsGroup:
-  # fsGroup:
+  # fsGroup: 2000
+  # runAsGroup: 10002
+  # runAsUser: 10001
+  # seccompProfile:
+  #   type: RuntimeDefault
+
+# Set securityContext for the kafka-exporter container
+containerSecurityContext: {}
+  # allowPrivilegeEscalation: false
+  # capabilities:
+  #   drop: ["all"]
+  # readOnlyRootFilesystem: true
+  # runAsGroup: 10002
+  # runAsNonRoot: true
+  # runAsUser: 10001
+  # seccompProfile:
+  #   type: RuntimeDefault

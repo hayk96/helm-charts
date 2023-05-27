@@ -47,6 +47,8 @@ spec:
           {{- end }}
           {{- if .Values.tls.insecureSkipVerify }}
             - '--tls.insecure-skip-tls-verify'
+          {{- else if .Values.tls.serverName }}
+            - '--tls.server-name={{ .Values.tls.serverName }}'
           {{- end }}
           {{- end }}
           {{- if .Values.sasl.enabled }}
@@ -65,6 +67,12 @@ spec:
             - '--sasl.realm={{ .Values.sasl.kerberos.realm }}'
             - '--sasl.keytab-path={{ .Values.sasl.kerberos.mountPath }}/kerberos.keytab'
             - '--sasl.kerberos-auth-type={{ .Values.sasl.kerberos.kerberosAuthType }}'
+          {{- end }}
+          {{- if .Values.server.tls.enabled }}
+            - '--server.tls.ca-file={{ .Values.server.tls.mountPath }}/ca.crt'
+            - '--server.tls.cert-file={{ .Values.server.tls.mountPath }}/tls.crt'
+            - '--server.tls.key-file={{ .Values.server.tls.mountPath }}/tls.key'
+            - '--server.tls.mutual-auth-enabled={{ .Values.server.tls.mutualAuthEnabled }}'
           {{- end }}
           {{- end }}
           {{- if .Values.extraArgs }}
@@ -90,7 +98,7 @@ spec:
                   key: password
           {{- end }}
           name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: exporter-port
@@ -106,6 +114,10 @@ spec:
 {{- end }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
+          {{- with .Values.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           {{- if or (.Values.tls.mountPath) (.Values.sasl.kerberos.mountPath) }}
           volumeMounts:
             {{- if .Values.tls.mountPath }}
@@ -116,6 +128,11 @@ spec:
             {{- if .Values.sasl.kerberos.mountPath }}
             - mountPath: {{ .Values.sasl.kerberos.mountPath }}
               name: kerberos
+              readOnly: true
+            {{- end }}
+            {{- if .Values.server.tls.mountPath }}
+            - mountPath: {{ .Values.server.tls.mountPath }}
+              name: server-certs
               readOnly: true
             {{- end }}
           {{- end }}
@@ -143,4 +160,13 @@ spec:
           secret:
             secretName: {{ .Values.sasl.kerberos.secretName }}
         {{- end }}
+        {{- if .Values.server.tls.mountPath }}
+        - name: server-certs
+          secret:
+            secretName: {{ .Values.server.tls.secretName }}
+        {{- end }}
+      {{- end }}
+      {{- if or .Values.imagePullSecrets .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+      {{- include "prometheus-kafka-exporter.imagePullSecrets" (dict "Values" .Values "imagePullSecrets" .Values.imagePullSecrets) | indent 8 }}
       {{- end }}

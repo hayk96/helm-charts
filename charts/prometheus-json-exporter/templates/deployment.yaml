@@ -13,12 +13,16 @@ spec:
       {{- include "prometheus-json-exporter.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
       annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
         {{- include "prometheus-json-exporter.selectorLabels" . | nindent 8 }}
+        {{- if .Values.podLabels }}
+          {{ toYaml .Values.podLabels | nindent 8 }}
+        {{- end }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -27,10 +31,16 @@ spec:
       serviceAccountName: {{ include "prometheus-json-exporter.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.extraInitContainers }}
+      initContainers:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- with .Values.environmentVariables }}
+          env:
+            {{- toYaml . | nindent 12}}
+          {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
@@ -51,6 +61,11 @@ spec:
             - name: config-configmap-volume
               mountPath: /config.yml
               subPath: config.yml
+          {{- with .Values.additionalVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+          {{- end  }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
       volumes:
       - name: config-configmap-volume
         configMap:
@@ -58,6 +73,9 @@ spec:
           items:
             - key: config.yml
               path: config.yml
+      {{- with .Values.additionalVolumes }}
+        {{- toYaml . | nindent 6 }}
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

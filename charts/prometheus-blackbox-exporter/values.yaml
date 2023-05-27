@@ -6,6 +6,12 @@ kind: Deployment
 ##
 namespaceOverride: ""
 
+# Override Kubernetes version if your distribution does not follow semver v2
+kubeVersionOverride: ""
+
+## set to true to add the release label so scraping of the servicemonitor with kube-prometheus-stack works out of the box
+releaseLabel: false
+
 podDisruptionBudget: {}
   # maxUnavailable: 0
 
@@ -72,7 +78,7 @@ strategy:
 
 image:
   repository: prom/blackbox-exporter
-  tag: v0.19.0
+  tag: v0.23.0
   pullPolicy: IfNotPresent
 
   ## Optionally specify an array of imagePullSecrets.
@@ -82,21 +88,30 @@ image:
   # pullSecrets:
   #   - myRegistrKeySecretName
 
+podSecurityContext: {}
+# fsGroup: 1000
+
 ## User and Group to run blackbox-exporter container as
-runAsUser: 1000
-runAsGroup: 1000
-readOnlyRootFilesystem: true
-runAsNonRoot: true
-allowPrivilegeEscalation: false
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+# Add NET_RAW to enable ICMP
+#    add: ["NET_RAW"]
 
 livenessProbe:
   httpGet:
-    path: /health
+    path: /-/healthy
     port: http
+  failureThreshold: 3
 
 readinessProbe:
   httpGet:
-    path: /health
+    path: /-/healthy
     port: http
 
 nodeSelector: {}
@@ -138,8 +153,6 @@ extraSecretMounts: []
   #   secretName: blackbox-secret-files
   #   readOnly: true
   #   defaultMode: 420
-
-allowIcmp: false
 
 resources: {}
   # limits:
@@ -208,13 +221,25 @@ replicas: 1
 
 serviceMonitor:
   ## If true, a ServiceMonitor CRD is created for a prometheus operator
-  ## https://github.com/coreos/prometheus-operator
+  ## https://github.com/coreos/prometheus-operator for blackbox-exporter itself
+  ##
+  selfMonitor:
+    enabled: false
+    additionalMetricsRelabels: {}
+    additionalRelabeling: []
+    labels: {}
+    interval: 30s
+    scrapeTimeout: 30s
+
+  ## If true, a ServiceMonitor CRD is created for a prometheus operator
+  ## https://github.com/coreos/prometheus-operator for each target
   ##
   enabled: false
 
   # Default values that will be used for all ServiceMonitors created by `targets`
   defaults:
     additionalMetricsRelabels: {}
+    additionalRelabeling: []
     labels: {}
     interval: 30s
     scrapeTimeout: 30s
@@ -229,11 +254,13 @@ serviceMonitor:
   targets:
 #    - name: example                    # Human readable URL that will appear in Prometheus / AlertManager
 #      url: http://example.com/healthz  # The URL that blackbox will scrape
+#      hostname: example.com            # HTTP probes can accept an additional `hostname` parameter that will set `Host` header and TLS SNI
 #      labels: {}                       # Map of labels for ServiceMonitor. Overrides value set in `defaults`
 #      interval: 60s                    # Scraping interval. Overrides value set in `defaults`
 #      scrapeTimeout: 60s               # Scrape timeout. Overrides value set in `defaults`
 #      module: http_2xx                 # Module used for scraping. Overrides value set in `defaults`
 #      additionalMetricsRelabels: {}    # Map of metric labels and values to add
+#      additionalRelabeling: []         # List of metric relabeling actions to run
 
 ## Custom PrometheusRules to be defined
 ## ref: https://github.com/coreos/prometheus-operator#customresourcedefinitions
@@ -256,3 +283,16 @@ networkPolicy:
 ## These will be passed directly to the PodSpec of same.
 dnsPolicy:
 dnsConfig:
+
+# Extra manifests to deploy as an array
+extraManifests: []
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #   labels:
+  #     name: prometheus-extra
+  #   data:
+  #     extra-data: "value"
+
+# global common labels, applied to all ressources
+commonLabels: {}

@@ -1,13 +1,22 @@
-# Default values for prometheus-mysql-exporter.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+## Default values for prometheus-mysql-exporter.
+## This is a YAML-formatted file.
+## Declare variables to be passed into your templates.
+
+## override release name
+fullnameOverride: ""
 
 replicaCount: 1
 
 image:
-  repository: "prom/mysqld-exporter"
-  tag: "v0.12.1"
+  registry: quay.io
+  repository: prometheus/mysqld-exporter
+  ## if not set charts appVersion var is used
+  tag: ""
   pullPolicy: "IfNotPresent"
+
+# imagePullSecrets:
+# - name: secret-name
+imagePullSecrets: []
 
 service:
   labels: {}
@@ -62,6 +71,17 @@ affinity: {}
 
 podLabels: {}
 
+# Extra Volume Mounts for the mysql exporter container
+extraVolumeMounts: []
+# - name: example
+#   mountPath: /example
+
+# Extra Volumes for the pod
+extraVolumes: []
+# - name: example
+#   configMap:
+#     name: example
+
 podSecurityContext: {}
   # fsGroup: 65534
 
@@ -73,11 +93,15 @@ securityContext: {}
   # runAsNonRoot: true
   # runAsUser: 65534
 
-
 annotations:
   prometheus.io/scrape: "true"
   prometheus.io/path: "/metrics"
   prometheus.io/port: "9104"
+
+config: {}
+  # Allow to set specifc options on the exporter
+  # logLevel: info
+  # logFormat: "logger:stderr"
 
 collectors: {}
   # auto_increment.columns: false
@@ -137,21 +161,15 @@ cloudsqlproxy:
   enabled: false
   image:
     repo: "gcr.io/cloudsql-docker/gce-proxy"
-    tag: "1.19.1-alpine"
+    tag: "1.33.0-alpine"
     pullPolicy: "IfNotPresent"
   instanceConnectionName: "project:us-central1:dbname"
+  ipAddressTypes: ""
   port: "3306"
   credentialsSecret: ""
+  # service account json
   credentials: ""
-    # {
-    #   "type": "service_account",
-    #   "project_id": "project",
-    #   "private_key_id": "KEYID1",
-    #   "private_key": "-----BEGIN PRIVATE KEY-----\sdajsdnasd\n-----END PRIVATE KEY-----\n",
-    #   "client_email": "user@project.iam.gserviceaccount.com",
-    #   "client_id": "111111111",
-    #   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-    #   "token_uri": "https://accounts.google.com/o/oauth2/token",
-    #   "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    #   "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/user%40project.iam.gserviceaccount.com"
-    # }
+  workloadIdentity:
+    enabled: false
+    serviceAccountEmail: ""
+  extraArgs: ""

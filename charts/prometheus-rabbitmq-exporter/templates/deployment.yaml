@@ -27,6 +27,12 @@ spec:
       annotations:
 {{ toYaml .Values.annotations | indent 8 }}
     spec:
+    {{- if .Values.image.pullSecrets }}
+      imagePullSecrets:
+      {{- range .Values.image.pullSecrets }}
+        - name: {{ . }}
+      {{- end }}
+    {{- end }}
       serviceAccountName: {{ template "prometheus-rabbitmq-exporter.serviceAccountName" . }}
       containers:
         - name: {{ .Chart.Name }}
@@ -71,6 +77,8 @@ spec:
               value: "{{ .Values.rabbitmq.timeout }}"
             - name: MAX_QUEUES
               value: "{{ .Values.rabbitmq.max_queues }}"
+            - name: EXCLUDE_METRICS
+              value: "{{ .Values.rabbitmq.excludeMetrics }}"
           ports:
             - containerPort: {{ .Values.service.internalPort }}
               name: publish

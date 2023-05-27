@@ -40,6 +40,12 @@ helm.sh/chart: {{ include "prometheus-blackbox-exporter.chart" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- if .Values.releaseLabel }}
+release: {{ .Release.Name }}
+{{- end }}
+{{- if .Values.commonLabels }}
+{{ toYaml .Values.commonLabels }}
+{{- end }}
 {{- end }}
 
 {{/*
@@ -79,4 +85,9 @@ Return the appropriate apiVersion for rbac.
   {{- else -}}
     {{- .Release.Namespace -}}
   {{- end -}}
+{{- end -}}
+
+{{/* Enable overriding Kubernetes version for some use cases */}}
+{{- define "prometheus-blackbox-exporter.kubeVersion" -}}
+  {{- default .Capabilities.KubeVersion.Version .Values.kubeVersionOverride -}}
 {{- end -}}

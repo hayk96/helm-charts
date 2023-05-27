@@ -3,16 +3,12 @@ kind: Deployment
 metadata:
   name: {{ template "stackdriver-exporter.fullname" . }}
   labels:
-    chart: {{ template "stackdriver-exporter.chart" . }}
-    app: {{ template "stackdriver-exporter.name" . }}
-    release: "{{ .Release.Name }}"
-    heritage: "{{ .Release.Service }}"
+    {{- include "stackdriver-exporter.labels" . | indent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ template "stackdriver-exporter.name" . }}
-      release: "{{ .Release.Name }}"
+      {{- include "stackdriver-exporter.selectorLabels" . | indent 6 }}
   strategy:
     rollingUpdate:
       maxSurge: 1
@@ -21,8 +17,7 @@ spec:
   template:
     metadata:
       labels:
-        app: {{ template "stackdriver-exporter.name" . }}
-        release: "{{ .Release.Name }}"
+        {{- include "stackdriver-exporter.labels" . | indent 8 }}
       {{- if .Values.annotations }}
       annotations:
         {{- toYaml .Values.annotations | nindent 8 }}
@@ -43,6 +38,7 @@ spec:
       {{- end }}
       {{- end }}
       serviceAccount: {{ template "stackdriver-exporter.serviceAccountName" . }}
+      serviceAccountName: {{ template "stackdriver-exporter.serviceAccountName" . }}
       restartPolicy: {{ .Values.restartPolicy }}
       volumes:
       {{- if .Values.stackdriver.serviceAccountSecret }}
@@ -74,6 +70,9 @@ spec:
             - --monitoring.metrics-interval={{ .Values.stackdriver.metrics.interval }}
             - --monitoring.metrics-offset={{ .Values.stackdriver.metrics.offset }}
             - --monitoring.metrics-type-prefixes={{ .Values.stackdriver.metrics.typePrefixes }}
+            {{- range .Values.stackdriver.metrics.filters }}
+            - --monitoring.filters={{ . }}
+            {{- end }}
             - --stackdriver.backoff-jitter={{ .Values.stackdriver.backoffJitter }}
             - --stackdriver.http-timeout={{ .Values.stackdriver.httpTimeout }}
             - --stackdriver.max-backoff={{ .Values.stackdriver.maxBackoff }}
@@ -86,6 +85,10 @@ spec:
           {{- end }}
           {{- if .Values.stackdriver.metrics.ingestDelay }}
             - --monitoring.metrics-ingest-delay
+          {{- end }}
+          {{- if .Values.stackdriver.metrics.aggregateDeltas }}
+            - --monitoring.aggregate-deltas
+            - --monitoring.aggregate-deltas-ttl={{ .Values.stackdriver.metrics.aggregateDeltasTTL }}
           {{- end }}
           {{- if .Values.extraArgs }}
           {{- range $key, $value := .Values.extraArgs }}
@@ -116,6 +119,10 @@ spec:
               port: http
             initialDelaySeconds: 10
             timeoutSeconds: 10
+          {{- if .Values.containerSecurityContext }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          {{- end }}
       {{- if .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}

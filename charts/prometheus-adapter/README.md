@@ -6,51 +6,50 @@ Installs the [Prometheus Adapter](https://github.com/kubernetes-sigs/prometheus-
 
 Kubernetes 1.14+
 
-## Get Repo Info
+## Get Helm Repositories Info
 
 ```console
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
 ```
 
-_See [helm repo](https://helm.sh/docs/helm/helm_repo/) for command documentation._
+_See [`helm repo`](https://helm.sh/docs/helm/helm_repo/) for command documentation._
 
-## Install Chart
+## Install Helm Chart
 
 ```console
-# Helm 3
-$ helm install [RELEASE_NAME] prometheus-community/prometheus-adapter
-
-# Helm 2
-$ helm install --name [RELEASE_NAME] prometheus-community/prometheus-adapter
+helm install [RELEASE_NAME] prometheus-community/prometheus-adapter
 ```
 
 _See [configuration](#configuration) below._
 
 _See [helm install](https://helm.sh/docs/helm/helm_install/) for command documentation._
 
-## Uninstall Chart
+## Uninstall Helm Chart
 
 ```console
-# Helm 3
-$ helm uninstall [RELEASE_NAME]
-
-# Helm 2
-# helm delete --purge [RELEASE_NAME]
+helm uninstall [RELEASE_NAME]
 ```
 
 This removes all the Kubernetes components associated with the chart and deletes the release.
 
 _See [helm uninstall](https://helm.sh/docs/helm/helm_uninstall/) for command documentation._
 
-## Upgrading Chart
+## Upgrading Helm Chart
 
 ```console
-# Helm 3 or 2
-$ helm upgrade [RELEASE_NAME] [CHART] --install
+helm upgrade [RELEASE_NAME] [CHART] --install
 ```
 
 _See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command documentation._
+
+### To 4.2.0
+
+Readiness and liveness probes are now fully configurable through values `readinessProbe` and `livenessProbe`. The previous values have been kept as defaults.
+
+### To 4.0.0
+
+Previously, security context of the container was set directly in the deployment template. This release makes it configurable through the new configuration variable `securityContext` whilst keeping the previously set values as defaults. Furthermore, previous variable `runAsUser` is now set in `securityContext` and is not used any longer. Please, use `securityContext.runAsUser` instead. In the same security context, `seccompProfile` has been enabled and set to type `RuntimeDefault`.
 
 ### To 3.0.0
 
@@ -61,11 +60,7 @@ Due to a change in deployment labels, the upgrade requires `helm upgrade --force
 See [Customizing the Chart Before Installing](https://helm.sh/docs/intro/using_helm/#customizing-the-chart-before-installing). To see all configurable options with detailed comments, visit the chart's [values.yaml](./values.yaml), or run these configuration commands:
 
 ```console
-# Helm 2
-$ helm inspect values prometheus-community/prometheus-adapter
-
-# Helm 3
-$ helm show values prometheus-community/prometheus-adapter
+helm show values prometheus-community/prometheus-adapter
 ```
 
 ### Prometheus Service Endpoint
@@ -122,8 +117,14 @@ Enabling this option will cause resource metrics to be served at `/apis/metrics.
 rules:
   resource:
     cpu:
-      containerQuery: sum(rate(container_cpu_usage_seconds_total{<<.LabelMatchers>>, container!=""}[3m])) by (<<.GroupBy>>)
-      nodeQuery: sum(rate(container_cpu_usage_seconds_total{<<.LabelMatchers>>, id='/'}[3m])) by (<<.GroupBy>>)
+      containerQuery: |
+        sum by (<<.GroupBy>>) (
+          rate(container_cpu_usage_seconds_total{container!="",<<.LabelMatchers>>}[3m])
+        )
+      nodeQuery: |
+        sum  by (<<.GroupBy>>) (
+          rate(node_cpu_seconds_total{mode!="idle",mode!="iowait",mode!="steal",<<.LabelMatchers>>}[3m])
+        )
       resources:
         overrides:
           node:
@@ -134,8 +135,16 @@ rules:
             resource: pod
       containerLabel: container
     memory:
-      containerQuery: sum(container_memory_working_set_bytes{<<.LabelMatchers>>, container!=""}) by (<<.GroupBy>>)
-      nodeQuery: sum(container_memory_working_set_bytes{<<.LabelMatchers>>,id='/'}) by (<<.GroupBy>>)
+      containerQuery: |
+        sum by (<<.GroupBy>>) (
+          avg_over_time(container_memory_working_set_bytes{container!="",<<.LabelMatchers>>}[3m])
+        )
+      nodeQuery: |
+        sum by (<<.GroupBy>>) (
+          avg_over_time(node_memory_MemTotal_bytes{<<.LabelMatchers>>}[3m])
+          -
+          avg_over_time(node_memory_MemAvailable_bytes{<<.LabelMatchers>>}[3m])
+        )
       resources:
         overrides:
           node:

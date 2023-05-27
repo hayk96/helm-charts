@@ -4,12 +4,21 @@ metadata:
   name: {{ include "alertmanager.fullname" . }}
   labels:
     {{- include "alertmanager.labels" . | nindent 4 }}
-{{- if .Values.service.annotations }}
+  {{- with .Values.service.annotations }}
   annotations:
-    {{- toYaml .Values.service.annotations | nindent 4 }}
-{{- end }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ .Values.service.type }}
+  {{- with .Values.service.loadBalancerIP }}
+  loadBalancerIP: {{ . }}
+  {{- end }}
+  {{- with .Values.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+  {{- range $cidr := . }}
+    - {{ $cidr }}
+  {{- end }}
+  {{- end }}
   ports:
     - port: {{ .Values.service.port }}
       targetPort: http
@@ -34,13 +43,13 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
-    {{- if or (gt .Values.replicaCount 1.0) (.Values.additionalPeers) }}
-    - port: 9094
-      targetPort: 9094
+    {{- if or (gt (int .Values.replicaCount) 1) (.Values.additionalPeers) }}
+    - port: {{ .Values.service.clusterPort }}
+      targetPort: {{ .Values.service.clusterPort }}
       protocol: TCP
       name: cluster-tcp
-    - port: 9094
-      targetPort: 9094
+    - port: {{ .Values.service.clusterPort }}
+      targetPort: {{ .Values.service.clusterPort }}
       protocol: UDP
       name: cluster-udp
     {{- end }}
